@@ -1,14 +1,14 @@
 pipeline {
-agent any
+agent none
 stages {
-stage('step1') {
+stage('Build') {
+agent { docker {
+image 'mcr.microsoft.com/playwright:v1.57.0-noble'
+args '--network=host'
+ } }
 steps {
-sh 'echo étape un'
- }
- }
-stage('step2') {
-steps {
-sh 'echo étape deux'
+sh 'npm install'
+sh 'npm run build'
  }
  }
  }
