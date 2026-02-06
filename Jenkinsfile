@@ -5,7 +5,7 @@ pipeline {
       args '--network=host'
     }
   }
-
+ //gooooooooooood
   stages {
 
     stage('Install & Build') {
