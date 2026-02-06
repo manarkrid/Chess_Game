@@ -43,7 +43,7 @@ pipeline {
         reportFiles: 'index.html',
         reportName: 'VitestReport'
       ])
-
+       
       publishHTML([
         allowMissing: true,
         keepAll: true,
