@@ -1,58 +1,56 @@
 pipeline {
-    agent none
+  agent {
+    docker {
+      image 'mcr.microsoft.com/playwright:v1.57.0-noble'
+      args '--network=host'
+    }
+  }
 
-    stages {
-        // Étape 1 : Build du projet
-        stage('Build') {
-            agent { docker { image 'mcr.microsoft.com/playwright:v1.57.0-noble' } }
-            steps {
-                echo " Installation des dépendances et build du projet"
-                sh 'npm install'
-                sh 'npm run build'
-            }
-        }
+  stages {
 
-        // Étape 2 : Tests unitaires
-        stage('Tests Unitaires') {
-            agent { docker { image 'mcr.microsoft.com/playwright:v1.57.0-noble' } }
-            steps {
-                echo " Lancement des tests unitaires Vitest"
-                sh 'npx vitest --reporter=html run'
-            }
-        }
-
-        // Étape 3 : Tests UI / E2E
-        stage('Tests UI') {
-            agent { docker { image 'mcr.microsoft.com/playwright:v1.57.0-noble' } }
-            steps {
-                echo " Lancement des tests UI Playwright"
-                sh 'npx playwright install'
-                sh 'npx playwright test --reporter=html'
-            }
-        }
+    stage('Install & Build') {
+      steps {
+        echo "Installation des dépendances"
+        sh 'npm install'
+        echo "Build du projet"
+        sh 'npm run build'
+      }
     }
 
-    post {
-        always {
-            echo " Publication des rapports HTML dans Jenkins"
-
-            // Rapport Vitest
-            publishHTML([
-                allowMissing: true,
-                alwaysLinkToLastBuild: false,
-                reportDir: 'html',
-                reportFiles: 'index.html',
-                reportName: 'VitestReport'
-            ])
-
-            // Rapport Playwright
-            publishHTML([
-                allowMissing: true,
-                alwaysLinkToLastBuild: false,
-                reportDir: 'playwright-report',
-                reportFiles: 'index.html',
-                reportName: 'PlaywrightReport'
-            ])
-        }
+    stage('Tests Unitaires') {
+      steps {
+        echo "Lancement des tests unitaires (Vitest)"
+        sh 'npx vitest run --reporter=html'
+      }
     }
+
+    stage('Tests UI / E2E') {
+      steps {
+        echo "Lancement des tests UI (Playwright)"
+        sh 'npx playwright test --reporter=html'
+      }
+    }
+  }
+
+  post {
+    always {
+      echo "Publication des rapports HTML"
+
+      publishHTML([
+        allowMissing: true,
+        keepAll: true,
+        reportDir: 'html',
+        reportFiles: 'index.html',
+        reportName: 'VitestReport'
+      ])
+
+      publishHTML([
+        allowMissing: true,
+        keepAll: true,
+        reportDir: 'playwright-report',
+        reportFiles: 'index.html',
+        reportName: 'PlaywrightReport'
+      ])
+    }
+  }
 }
