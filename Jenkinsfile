@@ -2,7 +2,7 @@ pipeline {
     agent none
 
     stages {
-        // Étape 1 : Build du projet
+        // Étape 1 : Build du   projet
         stage('Build') {
             agent { docker { image 'mcr.microsoft.com/playwright:v1.57.0-noble' } }
             steps {
