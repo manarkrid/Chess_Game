@@ -11,6 +11,7 @@ pipeline {
             }
             steps {
                 sh 'npm install'
+                sh 'chmod +x node_modules/.bin/* || true'
                 sh 'npm run build'
             }
         }
