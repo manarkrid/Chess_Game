@@ -1,16 +1,11 @@
 pipeline {
-    agent { 
-        docker {
-            image 'mcr.microsoft.com/playwright:v1.57.0-noble'
-            args '--network=host'
-        }
-    }
+    agent any
 
     stages {
+
         stage('Clean Workspace') {
             steps {
-                echo 'Nettoyage complet du workspace'
-                deleteDir() // Supprime tout, y compris node_modules
+                deleteDir()
             }
         }
 
@@ -22,64 +17,63 @@ pipeline {
 
         stage('Build') {
             steps {
-                echo 'Début étape build'
-                sh 'npm install'
-                sh 'npm run build'
-                echo 'Fin étape build'
+                sh '''
+                  npm install
+                  npm run build
+                '''
             }
         }
 
-        stage('Test unitaire') {
+        stage('Test unitaire (Vitest)') {
             steps {
-                echo 'Test unitaire'
-                sh 'npm install -D jsdom @vitest/ui'
-                sh 'npm run test'
+                sh '''
+                  npm run test
+                '''
             }
             post {
                 always {
                     publishHTML([
                         allowMissing: true,
-                        alwaysLinkToLastBuild: false,
                         keepAll: true,
                         reportDir: 'html',
                         reportFiles: 'index.html',
-                        reportName: 'VitestReport',
-                        useWrapperFileDirectly: true
+                        reportName: 'VitestReport'
                     ])
                 }
             }
         }
 
-        stage('Test UI') {
+        stage('Test UI (Playwright)') {
+            agent {
+                docker {
+                    image 'mcr.microsoft.com/playwright:v1.57.0-noble'
+                    reuseNode true
+                }
+            }
             steps {
-                echo 'Test UI'
-                sh 'npx playwright install'
-                sh 'npm run test:e2e'
+                sh '''
+                  npm ci
+                  npx playwright install --with-deps
+                  npm run test:e2e
+                '''
             }
             post {
                 always {
                     publishHTML([
                         allowMissing: true,
-                        alwaysLinkToLastBuild: false,
                         keepAll: true,
                         reportDir: 'playwright-report',
                         reportFiles: 'index.html',
-                        reportName: 'PlaywrightReport',
-                        useWrapperFileDirectly: true
+                        reportName: 'PlaywrightReport'
                     ])
                 }
             }
         }
 
         stage('Deploy') {
-            when { branch 'master' }
-            environment {
-                NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN')
-            }
+            when { branch 'main' }
             steps {
-                sh 'npm install'
-                sh 'npm run build'
-                sh 'node_modules/netlify-cli/bin/run.js deploy --prod --site chessnotalreadyexists.netlify.app'
+                echo 'Deploy ici'
             }
         }
     }
