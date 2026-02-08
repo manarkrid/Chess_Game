@@ -1,6 +1,11 @@
 pipeline {
     agent none
-
+    
+    options {
+        timestamps()
+        timeout(time: 30, unit: 'MINUTES')
+    }
+    
     stages {
         stage('Build') {
             agent {
@@ -10,6 +15,7 @@ pipeline {
                 }
             }
             steps {
+                deleteDir()  // ← AJOUTE CETTE LIGNE
                 sh 'npm install'
                 sh 'npm run build'
             }
@@ -42,27 +48,25 @@ pipeline {
 
     post {
         always {
-            node('jenkins-agent') {
-                publishHTML([
-                    allowMissing: true,
-                    alwaysLinkToLastBuild: false,
-                    keepAll: true,
-                    reportDir: 'html',
-                    reportFiles: 'index.html',
-                    reportName: 'VitestReport',
-                    useWrapperFileDirectly: true
-                ])
+            publishHTML([
+                allowMissing: true,
+                alwaysLinkToLastBuild: false,
+                keepAll: true,
+                reportDir: 'html',
+                reportFiles: 'index.html',
+                reportName: 'VitestReport',
+                useWrapperFileDirectly: true
+            ])
 
-                publishHTML([
-                    allowMissing: true,
-                    alwaysLinkToLastBuild: false,
-                    keepAll: true,
-                    reportDir: 'playwright-report',
-                    reportFiles: 'index.html',
-                    reportName: 'PlaywrightReport',
-                    useWrapperFileDirectly: true
-                ])
-            }
+            publishHTML([
+                allowMissing: true,
+                alwaysLinkToLastBuild: false,
+                keepAll: true,
+                reportDir: 'playwright-report',
+                reportFiles: 'index.html',
+                reportName: 'PlaywrightReport',
+                useWrapperFileDirectly: true
+            ])
         }
     }
 }
