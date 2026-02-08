@@ -12,7 +12,7 @@ pipeline {
               -w /workspace \
               -v ${WORKSPACE}:/workspace \
               mcr.microsoft.com/playwright:v1.57.0-noble \
-              bash -c "npm install && npm run build"
+              bash -c 'npm install && npm run build'
           '''
         }
       }
