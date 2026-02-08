@@ -34,6 +34,7 @@ pipeline {
                 always {
                     publishHTML([
                         allowMissing: true,
+                        alwaysLinkToLastBuild: true,   // ✅ OBLIGATOIRE
                         keepAll: true,
                         reportDir: 'html',
                         reportFiles: 'index.html',
@@ -61,6 +62,7 @@ pipeline {
                 always {
                     publishHTML([
                         allowMissing: true,
+                        alwaysLinkToLastBuild: true,   // ✅ OBLIGATOIRE
                         keepAll: true,
                         reportDir: 'playwright-report',
                         reportFiles: 'index.html',
