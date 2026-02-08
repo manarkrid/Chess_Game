@@ -6,7 +6,7 @@ pipeline {
             agent {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
-                    args '--network=host -u root'  // ← AJOUTE -u root
+                    args '--user root --network=host'
                 }
             }
             steps {
@@ -19,11 +19,11 @@ pipeline {
             agent {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
-                    args '--network=host -u root'  // ← AJOUTE -u root
+                    args '--user root --network=host'
                 }
             }
             steps {
-                sh 'npx vitest run'  // ← Utilise npx au lieu de npm run
+                sh 'npm run test'
             }
         }
 
@@ -31,36 +31,38 @@ pipeline {
             agent {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
-                    args '--network=host -u root'  // ← AJOUTE -u root
+                    args '--user root --network=host'
                 }
             }
             steps {
-                sh 'npx playwright test --reporter=html'  // ← Utilise npx
+                sh 'npm run test:e2e'
             }
         }
     }
 
     post {
         always {
-            publishHTML([
-                allowMissing: true,
-                alwaysLinkToLastBuild: false,
-                keepAll: true,
-                reportDir: 'html',
-                reportFiles: 'index.html',
-                reportName: 'VitestReport',
-                useWrapperFileDirectly: true
-            ])
+            node('jenkins-agent') {
+                publishHTML([
+                    allowMissing: true,
+                    alwaysLinkToLastBuild: false,
+                    keepAll: true,
+                    reportDir: 'html',
+                    reportFiles: 'index.html',
+                    reportName: 'VitestReport',
+                    useWrapperFileDirectly: true
+                ])
 
-            publishHTML([
-                allowMissing: true,
-                alwaysLinkToLastBuild: false,
-                keepAll: true,
-                reportDir: 'playwright-report',
-                reportFiles: 'index.html',
-                reportName: 'PlaywrightReport',
-                useWrapperFileDirectly: true
-            ])
+                publishHTML([
+                    allowMissing: true,
+                    alwaysLinkToLastBuild: false,
+                    keepAll: true,
+                    reportDir: 'playwright-report',
+                    reportFiles: 'index.html',
+                    reportName: 'PlaywrightReport',
+                    useWrapperFileDirectly: true
+                ])
+            }
         }
     }
 }
