@@ -66,12 +66,18 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy to Netlify') {
             when { 
                 branch 'main' 
             }
+            environment {
+                NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN')
+            }
             steps {
-                echo 'Déploiement sur la branche main'
+                sh '''
+                    npm install netlify-cli
+                    npx netlify deploy --prod --site=chess-game-manar --dir=dist --auth=$NETLIFY_AUTH_TOKEN
+                '''
             }
         }
     }
