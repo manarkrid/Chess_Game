@@ -1,90 +1,73 @@
 pipeline {
-    agent none
-    options {
-        timestamps()
-        timeout(time: 30, unit: 'MINUTES')
+    agent{ 
+        docker{
+            image 'mcr.microsoft.com/playwright:v1.57.0-noble'
+            args '--network=host'
+        }
     }
-
     stages {
-        // 1️⃣ Nettoyage du workspace avant checkout
-        stage('Prepare Workspace') {
-            agent { label 'jenkins-agent' }
+        stage('build') {
             steps {
-                script {
-                    // Supprime tout dans le workspace, même les fichiers root
-                    sh 'sudo rm -rf * || true'
+                sh 'echo debut etape build'
+                sh 'npm install'
+                sh 'npm run build'
+                sh 'echo fin etape build'
+            }
+        }
+        stage('test unitaire'){
+            steps{
+                sh 'echo test unitaire'
+                sh 'npm install -D jsdom'
+                sh 'npm install -D @vitest/ui'
+                sh 'npm run test'
+            }
+            post {
+                always {
+                    publishHTML([
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: false,
+                        keepAll: true,
+                        reportDir: 'html',
+                        reportFiles: 'index.html',
+                        reportName: 'VitestReport',
+                        reportTitles: '',
+                        useWrapperFileDirectly: true
+                    ])
                 }
             }
         }
-
-        // 2️⃣ Checkout du code
-        stage('Checkout') {
-            agent { label 'jenkins-agent' }
-            steps {
-                checkout scm
+        stage('test UI'){
+            steps{
+                    sh 'echo test UI'
+                    sh 'npx playwright install'
+                    sh 'npm run test:e2e'
+                }
+            post {
+                always {
+                    publishHTML([
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: false,
+                        keepAll: true,
+                        reportDir: 'playwright-report',
+                        reportFiles: 'index.html',
+                        reportName: 'PlaywrightReport',
+                        reportTitles: '',
+                        useWrapperFileDirectly: true
+                    ])
+                }
             }
         }
-
-        // 3️⃣ Build avec Docker
-        stage('Build') {
-            agent {
-                docker {
-                    image 'mcr.microsoft.com/playwright:v1.57.0-noble'
-                    args '--network=host' // <-- retire --user root
-                }
+        stage('deploy') {
+            when { branch 'master' }  
+            environment {
+                NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN')
             }
             steps {
                 sh 'npm install'
                 sh 'npm run build'
-            }
-        }
-
-        // 4️⃣ Tests unitaires
-        stage('Tests unitaires') {
-            agent {
-                docker {
-                    image 'mcr.microsoft.com/playwright:v1.57.0-noble'
-                    args '--network=host'
-                }
-            }
-            steps {
-                sh 'npm run test'
-            }
-        }
-
-        // 5️⃣ Tests UI
-        stage('Tests UI') {
-            agent {
-                docker {
-                    image 'mcr.microsoft.com/playwright:v1.57.0-noble'
-                    args '--network=host'
-                }
-            }
-            steps {
-                sh 'npm run test:e2e'
+                sh 'node_modules/netlify-cli/bin/run.js deploy --prod --site chessnotalreadyexists.netlify.app'
             }
         }
     }
 
-    post {
-        always {
-            script {
-                // Publier rapports HTML (optionnel)
-                publishHTML([
-                    allowMissing: true,
-                    reportDir: 'html',
-                    reportFiles: 'index.html',
-                    reportName: 'VitestReport',
-                    useWrapperFileDirectly: true
-                ])
-                publishHTML([
-                    allowMissing: true,
-                    reportDir: 'playwright-report',
-                    reportFiles: 'index.html',
-                    reportName: 'PlaywrightReport',
-                    useWrapperFileDirectly: true
-                ])
-            }
-        }
-    }
 }
