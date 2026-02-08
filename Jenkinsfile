@@ -1,24 +1,38 @@
 pipeline {
-    agent{ 
-        docker{
+    agent { 
+        docker {
             image 'mcr.microsoft.com/playwright:v1.57.0-noble'
             args '--network=host'
         }
     }
+
     stages {
-        stage('build') {
+        stage('Clean Workspace') {
             steps {
-                sh 'echo debut etape build'
-                sh 'npm install'
-                sh 'npm run build'
-                sh 'echo fin etape build'
+                echo 'Nettoyage complet du workspace'
+                deleteDir() // Supprime tout, y compris node_modules
             }
         }
-        stage('test unitaire'){
-            steps{
-                sh 'echo test unitaire'
-                sh 'npm install -D jsdom'
-                sh 'npm install -D @vitest/ui'
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo 'Début étape build'
+                sh 'npm install'
+                sh 'npm run build'
+                echo 'Fin étape build'
+            }
+        }
+
+        stage('Test unitaire') {
+            steps {
+                echo 'Test unitaire'
+                sh 'npm install -D jsdom @vitest/ui'
                 sh 'npm run test'
             }
             post {
@@ -30,18 +44,18 @@ pipeline {
                         reportDir: 'html',
                         reportFiles: 'index.html',
                         reportName: 'VitestReport',
-                        reportTitles: '',
                         useWrapperFileDirectly: true
                     ])
                 }
             }
         }
-        stage('test UI'){
-            steps{
-                    sh 'echo test UI'
-                    sh 'npx playwright install'
-                    sh 'npm run test:e2e'
-                }
+
+        stage('Test UI') {
+            steps {
+                echo 'Test UI'
+                sh 'npx playwright install'
+                sh 'npm run test:e2e'
+            }
             post {
                 always {
                     publishHTML([
@@ -51,14 +65,14 @@ pipeline {
                         reportDir: 'playwright-report',
                         reportFiles: 'index.html',
                         reportName: 'PlaywrightReport',
-                        reportTitles: '',
                         useWrapperFileDirectly: true
                     ])
                 }
             }
         }
-        stage('deploy') {
-            when { branch 'master' }  
+
+        stage('Deploy') {
+            when { branch 'master' }
             environment {
                 NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN')
             }
@@ -69,5 +83,4 @@ pipeline {
             }
         }
     }
-
 }
