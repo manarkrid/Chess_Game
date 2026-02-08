@@ -5,7 +5,7 @@ pipeline {
       agent {
         docker {
           image 'mcr.microsoft.com/playwright:v1.57.0-noble'
-          args '--network=host --user root'
+          args '--network=host'
         }
       }
       steps {
