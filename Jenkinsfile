@@ -6,12 +6,11 @@ pipeline {
             agent {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
-                    args '--network=host'
+                    args '--network=host -u root'  // ← AJOUTE -u root
                 }
             }
             steps {
                 sh 'npm install'
-                sh 'chmod +x node_modules/.bin/* || true'
                 sh 'npm run build'
             }
         }
@@ -20,11 +19,11 @@ pipeline {
             agent {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
-                    args '--network=host'
+                    args '--network=host -u root'  // ← AJOUTE -u root
                 }
             }
             steps {
-                sh 'npm run test'
+                sh 'npx vitest run'  // ← Utilise npx au lieu de npm run
             }
         }
 
@@ -32,11 +31,11 @@ pipeline {
             agent {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
-                    args '--network=host'
+                    args '--network=host -u root'  // ← AJOUTE -u root
                 }
             }
             steps {
-                sh 'npm run test:e2e'
+                sh 'npx playwright test --reporter=html'  // ← Utilise npx
             }
         }
     }
