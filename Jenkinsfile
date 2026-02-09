@@ -26,7 +26,10 @@ pipeline {
                 }
             }
             steps {
-                sh 'npm run test || true'
+                sh '''
+                    export HOME=/tmp
+                    npm run test || true
+                '''
             }
             post {
                 always {
@@ -51,7 +54,10 @@ pipeline {
                 }
             }
             steps {
-                sh 'npm run test:e2e || true'
+                sh '''
+                    export HOME=/tmp
+                    npm run test:e2e || true
+                '''
             }
             post {
                 always {
@@ -81,6 +87,7 @@ pipeline {
             }
             steps {
                 sh '''
+                    export HOME=/tmp
                     npm install netlify-cli
                     npx netlify deploy --prod --site=chess-game-manar --dir=dist --auth=$NETLIFY_AUTH_TOKEN
                 '''

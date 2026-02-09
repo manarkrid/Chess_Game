@@ -1,6 +1,6 @@
 version: "3.9"
 services:
-  docker:
+  jenkins-docker:
     image: docker:dind
     container_name: jenkins-docker
     privileged: true
@@ -39,4 +39,4 @@ services:
 
 volumes:
   jenkins-data:
-  jenkins-docker-certs:
+  docker-data:
