@@ -1,34 +1,30 @@
 pipeline {
-    agent {
-        docker {
-            image 'mcr.microsoft.com/playwright:v1.57.0-noble'
-            args '-u root:root'
-        }
-    }
+    agent none
 
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
+        stage('Build') {
+            agent { 
+                docker {
+                    image 'mcr.microsoft.com/playwright:v1.57.0-noble'
+                    args '--network=host -u root:root'
+                }
             }
-        }
-
-        stage('Install Dependencies') {
             steps {
                 sh '''
                     npm install
                     npx playwright install --with-deps
+                    npm run build
                 '''
             }
         }
 
-        stage('Build') {
-            steps {
-                sh 'npm run build'
-            }
-        }
-
         stage('Test Unitaire (Vitest)') {
+            agent { 
+                docker {
+                    image 'mcr.microsoft.com/playwright:v1.57.0-noble'
+                    args '--network=host -u root:root'
+                }
+            }
             steps {
                 sh 'npm run test || true'
             }
@@ -48,6 +44,12 @@ pipeline {
         }
 
         stage('Test UI (Playwright)') {
+            agent { 
+                docker {
+                    image 'mcr.microsoft.com/playwright:v1.57.0-noble'
+                    args '--network=host -u root:root'
+                }
+            }
             steps {
                 sh 'npm run test:e2e || true'
             }
@@ -67,8 +69,12 @@ pipeline {
         }
 
         stage('Deploy to Netlify') {
-            when { 
-                branch 'main' 
+            when { branch 'main' }
+            agent { 
+                docker {
+                    image 'mcr.microsoft.com/playwright:v1.57.0-noble'
+                    args '--network=host -u root:root'
+                }
             }
             environment {
                 NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN')
