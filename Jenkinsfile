@@ -2,6 +2,7 @@ pipeline {
     agent none
 
     stages {
+
         stage('Build') {
             agent { 
                 docker {
@@ -71,6 +72,25 @@ pipeline {
                         reportTitles: 'Playwright Test Report'
                     ])
                 }
+            }
+        }
+
+        stage('Docker Build & Push') {
+            when {
+                branch 'main'
+            }
+            environment {
+                CI_REGISTRY = 'ghcr.io'
+                CI_REGISTRY_USER = 'manarkrid'
+                CI_REGISTRY_IMAGE = "${CI_REGISTRY}/${CI_REGISTRY_USER}/chess"
+                CI_REGISTRY_PASSWORD = credentials('CI_REGISTRY_PASSWORD')
+            }
+            steps {
+                sh '''
+                    docker build -t $CI_REGISTRY_IMAGE .
+                    echo $CI_REGISTRY_PASSWORD | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+                    docker push $CI_REGISTRY_IMAGE
+                '''
             }
         }
 
