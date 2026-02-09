@@ -1,8 +1,10 @@
 pipeline {
-    agent any  // agent global pour que les post steps puissent s'exécuter
+    agent any  
 
     environment {
-        NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN') // pour le deploy Netlify
+        NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN')
+        HOME = '/tmp'
+        PLAYWRIGHT_BROWSERS_PATH = '/tmp/playwright-browsers'
     }
 
     stages {
@@ -11,12 +13,14 @@ pipeline {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
                     args '--network=host -u root:root'
+                    reuseNode true
                 }
             }
             steps {
                 sh '''
-                    npm install
-                    npx playwright install --with-deps
+                    export HOME=/tmp
+                    npm ci
+                    npx --yes playwright install --with-deps chromium
                     npm run build
                 '''
             }
@@ -27,10 +31,14 @@ pipeline {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
                     args '--network=host -u root:root'
+                    reuseNode true
                 }
             }
             steps {
-                sh 'npm run test || true'
+                sh '''
+                    export HOME=/tmp
+                    npm run test || true
+                '''
             }
             post {
                 always {
@@ -52,10 +60,14 @@ pipeline {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
                     args '--network=host -u root:root'
+                    reuseNode true
                 }
             }
             steps {
-                sh 'npm run test:e2e || true'
+                sh '''
+                    export HOME=/tmp
+                    npm run test:e2e || true
+                '''
             }
             post {
                 always {
@@ -78,10 +90,12 @@ pipeline {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
                     args '--network=host -u root:root'
+                    reuseNode true
                 }
             }
             steps {
                 sh '''
+                    export HOME=/tmp
                     npm install netlify-cli
                     npx netlify deploy --prod --site=chess-game-manar --dir=dist --auth=$NETLIFY_AUTH_TOKEN
                 '''
@@ -91,7 +105,6 @@ pipeline {
 
     post {
         always {
-            // entourer cleanWs() dans node {} si agent global absent
             cleanWs()
         }
     }
