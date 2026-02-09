@@ -1,19 +1,56 @@
 pipeline {
     agent any
+    
+    options {
+        skipDefaultCheckout()
+        timeout(time: 60, unit: 'MINUTES')
+    }
+    
+    environment {
+        NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN')
+        HOME = '/tmp'
+        PLAYWRIGHT_BROWSERS_PATH = '/tmp/playwright-browsers'
+    }
 
     stages {
+        stage('Checkout avec configuration Git') {
+            steps {
+                script {
+                    // Configuration Git pour éviter les problèmes réseau
+                    sh '''
+                        git config --global http.postBuffer 524288000
+                        git config --global http.version HTTP/1.1
+                        git config --global core.compression 0
+                        git config --global http.lowSpeedLimit 0
+                        git config --global http.lowSpeedTime 999999
+                    '''
+                    
+                    // Clonage avec shallow clone pour réduire la taille
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: '*/main']],
+                        extensions: [
+                            [$class: 'CloneOption', depth: 1, noTags: true, shallow: true]
+                        ],
+                        userRemoteConfigs: [[url: 'https://github.com/manarkrid/Chess_Game']]
+                    ])
+                }
+            }
+        }
 
         stage('Build') {
             agent { 
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
                     args '--network=host -u root:root'
+                    reuseNode true
                 }
             }
             steps {
                 sh '''
-                    npm install
-                    npx playwright install --with-deps
+                    export HOME=/tmp
+                    npm ci
+                    npx --yes playwright install --with-deps
                     npm run build
                 '''
             }
@@ -24,6 +61,7 @@ pipeline {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
                     args '--network=host -u root:root'
+                    reuseNode true
                 }
             }
             steps {
@@ -52,6 +90,7 @@ pipeline {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
                     args '--network=host -u root:root'
+                    reuseNode true
                 }
             }
             steps {
@@ -76,9 +115,8 @@ pipeline {
         }
 
         stage('Docker Build & Push') {
-            when {
-                branch 'main'
-            }
+            when { branch 'main' }
+            agent any
             environment {
                 CI_REGISTRY = 'ghcr.io'
                 CI_REGISTRY_USER = 'manarkrid'
@@ -87,9 +125,10 @@ pipeline {
             }
             steps {
                 sh '''
-                    docker build -t $CI_REGISTRY_IMAGE .
-                    echo $CI_REGISTRY_PASSWORD | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
-                    docker push $CI_REGISTRY_IMAGE
+                    docker build --network=host -t $CI_REGISTRY_IMAGE:latest .
+                    echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+                    docker push $CI_REGISTRY_IMAGE:latest
+                    docker logout $CI_REGISTRY
                 '''
             }
         }
@@ -100,10 +139,8 @@ pipeline {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
                     args '--network=host -u root:root'
+                    reuseNode true
                 }
-            }
-            environment {
-                NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN')
             }
             steps {
                 sh '''
@@ -117,7 +154,13 @@ pipeline {
 
     post {
         always {
-            cleanWs()
+            script {
+                try {
+                    cleanWs()
+                } catch (Exception e) {
+                    echo "Workspace cleanup failed: ${e.message}"
+                }
+            }
         }
     }
 }
