@@ -1,49 +1,34 @@
 pipeline {
     agent any
 
-    environment {
-        HOME = '/tmp'
-    }
-
     stages {
-        stage('Configure Git') {
-            steps {
-                sh '''
-                    git config --global http.postBuffer 524288000
-                    git config --global http.version HTTP/1.1
-                    git config --global http.lowSpeedLimit 0
-                    git config --global http.lowSpeedTime 999999
-                '''
-            }
-        }
 
-        stage('Install & Build') {
+        stage('Build') {
             agent { 
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
                     args '--network=host -u root:root'
-                    reuseNode true
                 }
             }
             steps {
                 sh '''
-                    npm ci
-                    npx --yes playwright install --with-deps
+                    npm install
+                    npx playwright install --with-deps
                     npm run build
                 '''
             }
         }
 
-        stage('Unit Tests (Vitest)') {
+        stage('Test Unitaire (Vitest)') {
             agent { 
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
                     args '--network=host -u root:root'
-                    reuseNode true
                 }
             }
             steps {
                 sh '''
+                    export HOME=/tmp
                     npm run test || true
                 '''
             }
@@ -62,35 +47,17 @@ pipeline {
             }
         }
 
-        stage('UI Tests (Playwright)') {
+        stage('Test UI (Playwright)') {
             agent { 
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
                     args '--network=host -u root:root'
-                    reuseNode true
                 }
             }
             steps {
                 sh '''
-                    # Démarrer Vite en arrière-plan
-                    npm run dev > /tmp/vite.log 2>&1 &
-                    VITE_PID=$!
-
-                    # Attendre que le serveur soit prêt
-                    echo " Waiting for Vite server..."
-                    for i in {1..60}; do
-                        if curl -s http://localhost:5173 > /dev/null 2>&1; then
-                            echo " Server ready!"
-                            break
-                        fi
-                        sleep 1
-                    done
-
-                    # Lancer les tests
+                    export HOME=/tmp
                     npm run test:e2e || true
-
-                    # Arrêter Vite
-                    kill $VITE_PID || true
                 '''
             }
             post {
@@ -109,8 +76,9 @@ pipeline {
         }
 
         stage('Docker Build & Push') {
-            when { branch 'main' }
-            agent any
+            when {
+                branch 'main'
+            }
             environment {
                 CI_REGISTRY = 'ghcr.io'
                 CI_REGISTRY_USER = 'manarkrid'
@@ -119,10 +87,9 @@ pipeline {
             }
             steps {
                 sh '''
-                    docker build --network=host -t $CI_REGISTRY_IMAGE:latest .
-                    echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-                    docker push $CI_REGISTRY_IMAGE:latest
-                    docker logout $CI_REGISTRY
+                    docker build -t $CI_REGISTRY_IMAGE .
+                    echo $CI_REGISTRY_PASSWORD | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+                    docker push $CI_REGISTRY_IMAGE
                 '''
             }
         }
@@ -133,7 +100,6 @@ pipeline {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
                     args '--network=host -u root:root'
-                    reuseNode true
                 }
             }
             environment {
@@ -141,7 +107,8 @@ pipeline {
             }
             steps {
                 sh '''
-                    npm install -g netlify-cli
+                    export HOME=/tmp
+                    npm install netlify-cli
                     npx netlify deploy --prod --site=chess-game-manar --dir=dist --auth=$NETLIFY_AUTH_TOKEN
                 '''
             }
