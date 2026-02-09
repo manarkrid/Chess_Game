@@ -1,4 +1,5 @@
-version: "3.9"
+version: '3.9'
+
 services:
   jenkins-docker:
     image: docker:dind
@@ -9,7 +10,7 @@ services:
       - docker-data:/var/lib/docker
 
   jenkins:
-    image: jenkins/jenkins:2.528.3-jdk21
+    build: .
     container_name: jenkins
     user: root
     restart: always
