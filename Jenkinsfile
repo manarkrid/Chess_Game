@@ -1,44 +1,23 @@
 pipeline {
     agent any
-    
-    options {
-        skipDefaultCheckout()
-        timeout(time: 60, unit: 'MINUTES')
-    }
-    
+
     environment {
-        NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN')
         HOME = '/tmp'
-        PLAYWRIGHT_BROWSERS_PATH = '/tmp/playwright-browsers'
     }
 
     stages {
-        stage('Checkout avec configuration Git') {
+        stage('Configure Git') {
             steps {
-                script {
-                    // Configuration Git pour éviter les problèmes réseau
-                    sh '''
-                        git config --global http.postBuffer 524288000
-                        git config --global http.version HTTP/1.1
-                        git config --global core.compression 0
-                        git config --global http.lowSpeedLimit 0
-                        git config --global http.lowSpeedTime 999999
-                    '''
-                    
-                    // Clonage avec shallow clone pour réduire la taille
-                    checkout([
-                        $class: 'GitSCM',
-                        branches: [[name: '*/main']],
-                        extensions: [
-                            [$class: 'CloneOption', depth: 1, noTags: true, shallow: true]
-                        ],
-                        userRemoteConfigs: [[url: 'https://github.com/manarkrid/Chess_Game']]
-                    ])
-                }
+                sh '''
+                    git config --global http.postBuffer 524288000
+                    git config --global http.version HTTP/1.1
+                    git config --global http.lowSpeedLimit 0
+                    git config --global http.lowSpeedTime 999999
+                '''
             }
         }
 
-        stage('Build') {
+        stage('Install & Build') {
             agent { 
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
@@ -48,7 +27,6 @@ pipeline {
             }
             steps {
                 sh '''
-                    export HOME=/tmp
                     npm ci
                     npx --yes playwright install --with-deps
                     npm run build
@@ -56,7 +34,7 @@ pipeline {
             }
         }
 
-        stage('Test Unitaire (Vitest)') {
+        stage('Unit Tests (Vitest)') {
             agent { 
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
@@ -66,7 +44,6 @@ pipeline {
             }
             steps {
                 sh '''
-                    export HOME=/tmp
                     npm run test || true
                 '''
             }
@@ -85,7 +62,7 @@ pipeline {
             }
         }
 
-        stage('Test UI (Playwright)') {
+        stage('UI Tests (Playwright)') {
             agent { 
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
@@ -95,8 +72,25 @@ pipeline {
             }
             steps {
                 sh '''
-                    export HOME=/tmp
+                    # Démarrer Vite en arrière-plan
+                    npm run dev > /tmp/vite.log 2>&1 &
+                    VITE_PID=$!
+
+                    # Attendre que le serveur soit prêt
+                    echo " Waiting for Vite server..."
+                    for i in {1..60}; do
+                        if curl -s http://localhost:5173 > /dev/null 2>&1; then
+                            echo " Server ready!"
+                            break
+                        fi
+                        sleep 1
+                    done
+
+                    # Lancer les tests
                     npm run test:e2e || true
+
+                    # Arrêter Vite
+                    kill $VITE_PID || true
                 '''
             }
             post {
@@ -142,10 +136,12 @@ pipeline {
                     reuseNode true
                 }
             }
+            environment {
+                NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN')
+            }
             steps {
                 sh '''
-                    export HOME=/tmp
-                    npm install netlify-cli
+                    npm install -g netlify-cli
                     npx netlify deploy --prod --site=chess-game-manar --dir=dist --auth=$NETLIFY_AUTH_TOKEN
                 '''
             }
@@ -154,13 +150,7 @@ pipeline {
 
     post {
         always {
-            script {
-                try {
-                    cleanWs()
-                } catch (Exception e) {
-                    echo "Workspace cleanup failed: ${e.message}"
-                }
-            }
+            cleanWs()
         }
     }
 }
