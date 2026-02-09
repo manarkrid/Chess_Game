@@ -1,27 +1,45 @@
+version: "3.9"
+
 services:
   docker:
     image: docker:dind
+    container_name: jenkins-docker
     privileged: true
     restart: always
+
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
     ports:
       - "2376:2376"
+
     volumes:
       - jenkins-docker-certs:/certs/client:rw
       - jenkins-data:/var/jenkins_home:rw
+
     environment:
       - DOCKER_TLS_CERTDIR=/certs
 
   jenkins:
     build: .
+    container_name: jenkins
     restart: always
+
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
     ports:
       - "8080:8080"
       - "50000:50000"
+
     volumes:
       - jenkins-data:/var/jenkins_home:rw
       - jenkins-docker-certs:/certs/client:ro
+
     environment:
-      - JAVA_OPTS="-Dhudson.model.DirectoryBrowserSupport.CSP="
+      - JAVA_OPTS=-Dhudson.model.DirectoryBrowserSupport.CSP=
       - DOCKER_HOST=tcp://docker:2376
       - DOCKER_CERT_PATH=/certs/client
       - DOCKER_TLS_VERIFY=1
