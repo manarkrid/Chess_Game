@@ -1,5 +1,9 @@
 pipeline {
-    agent none
+    agent any  // agent global pour que les post steps puissent s'exécuter
+
+    environment {
+        NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN') // pour le deploy Netlify
+    }
 
     stages {
         stage('Build') {
@@ -76,9 +80,6 @@ pipeline {
                     args '--network=host -u root:root'
                 }
             }
-            environment {
-                NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN')
-            }
             steps {
                 sh '''
                     npm install netlify-cli
@@ -90,6 +91,7 @@ pipeline {
 
     post {
         always {
+            // entourer cleanWs() dans node {} si agent global absent
             cleanWs()
         }
     }
