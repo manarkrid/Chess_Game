@@ -1,3 +1,5 @@
+import { Chess } from 'chess.js';
+
 export type PieceType = 'king' | 'queen' | 'rook' | 'bishop' | 'knight' | 'pawn';
 export type PieceColor = 'white' | 'black';
 
@@ -5,7 +7,7 @@ export interface ChessPiece {
   id: string;
   type: PieceType;
   color: PieceColor;
-  position: string; // format: 'a1', 'b2', etc.
+  position: string; // 'a1', 'b2', etc.
 }
 
 export interface MoveHistory {
@@ -16,35 +18,32 @@ export interface MoveHistory {
 }
 
 export class ChessService {
+  private chess: Chess;
   private pieces: ChessPiece[] = [];
   private moveHistory: MoveHistory[] = [];
-  
+
   constructor() {
+    this.chess = new Chess();
     this.initializeBoard();
   }
-  
+
   private initializeBoard(): void {
-    // Initialiser avec un tableau vide
+    this.chess.reset();
     this.pieces = [];
-    
+    this.moveHistory = [];
+
     // Pièces blanches
-    // Tours blanches
     this.pieces.push(
       { id: 'wr1', type: 'rook', color: 'white', position: 'a1' },
-      { id: 'wr2', type: 'rook', color: 'white', position: 'h1' },
-      // Cavaliers blancs
       { id: 'wn1', type: 'knight', color: 'white', position: 'b1' },
-      { id: 'wn2', type: 'knight', color: 'white', position: 'g1' },
-      // Fous blancs
       { id: 'wb1', type: 'bishop', color: 'white', position: 'c1' },
-      { id: 'wb2', type: 'bishop', color: 'white', position: 'f1' },
-      // Reine blanche
       { id: 'wq', type: 'queen', color: 'white', position: 'd1' },
-      // Roi blanc
-      { id: 'wk', type: 'king', color: 'white', position: 'e1' }
+      { id: 'wk', type: 'king', color: 'white', position: 'e1' },
+      { id: 'wb2', type: 'bishop', color: 'white', position: 'f1' },
+      { id: 'wn2', type: 'knight', color: 'white', position: 'g1' },
+      { id: 'wr2', type: 'rook', color: 'white', position: 'h1' }
     );
-    
-    // Pions blancs
+
     for (let i = 0; i < 8; i++) {
       this.pieces.push({
         id: `wp${i + 1}`,
@@ -53,25 +52,19 @@ export class ChessService {
         position: `${String.fromCharCode(97 + i)}2`
       });
     }
-    
+
     // Pièces noires
-    // Tours noires
     this.pieces.push(
       { id: 'br1', type: 'rook', color: 'black', position: 'a8' },
-      { id: 'br2', type: 'rook', color: 'black', position: 'h8' },
-      // Cavaliers noirs
       { id: 'bn1', type: 'knight', color: 'black', position: 'b8' },
-      { id: 'bn2', type: 'knight', color: 'black', position: 'g8' },
-      // Fous noirs
       { id: 'bb1', type: 'bishop', color: 'black', position: 'c8' },
-      { id: 'bb2', type: 'bishop', color: 'black', position: 'f8' },
-      // Reine noire
       { id: 'bq', type: 'queen', color: 'black', position: 'd8' },
-      // Roi noir
-      { id: 'bk', type: 'king', color: 'black', position: 'e8' }
+      { id: 'bk', type: 'king', color: 'black', position: 'e8' },
+      { id: 'bb2', type: 'bishop', color: 'black', position: 'f8' },
+      { id: 'bn2', type: 'knight', color: 'black', position: 'g8' },
+      { id: 'br2', type: 'rook', color: 'black', position: 'h8' }
     );
-    
-    // Pions noirs
+
     for (let i = 0; i < 8; i++) {
       this.pieces.push({
         id: `bp${i + 1}`,
@@ -81,61 +74,55 @@ export class ChessService {
       });
     }
   }
-  
+
   public getPieces(): ChessPiece[] {
     return [...this.pieces];
   }
-  
+
   public getPieceAt(position: string): ChessPiece | null {
-    return this.pieces.find(piece => piece.position === position) || null;
+    return this.pieces.find(p => p.position === position) || null;
   }
-  
+
+  // 🔥 MÉTHODE CLÉ DU TP
   public movePiece(pieceId: string, newPosition: string): boolean {
-    const pieceIndex = this.pieces.findIndex(p => p.id === pieceId);
-    if (pieceIndex === -1) return false;
-    
-    const piece = this.pieces[pieceIndex];
+    const piece = this.pieces.find(p => p.id === pieceId);
+    if (!piece) return false;
+
+    const move = this.chess.move({
+      from: piece.position,
+      to: newPosition,
+      promotion: 'q' // requis par chess.js
+    });
+
+    // ❌ coup illégal → refusé
+    if (!move) {
+      return false;
+    }
+
     const oldPosition = piece.position;
-    
-    // Si on essaie de bouger sur la même case
-    if (oldPosition === newPosition) {
-      // On enregistre quand même le mouvement dans l'historique
-      this.moveHistory.push({
-        pieceId,
-        from: oldPosition,
-        to: newPosition,
-        timestamp: new Date()
-      });
-      return true;
+
+    // Capture
+    if (move.captured) {
+      this.pieces = this.pieces.filter(p => p.position !== newPosition);
     }
-    
-    // Retirer la pièce à la position cible si elle existe
-    const targetPieceIndex = this.pieces.findIndex(p => p.position === newPosition && p.id !== pieceId);
-    if (targetPieceIndex !== -1) {
-      this.pieces.splice(targetPieceIndex, 1);
-    }
-    
-    // Mettre à jour la position de la pièce
+
     piece.position = newPosition;
-    
-    // Ajouter à l'historique
+
     this.moveHistory.push({
       pieceId,
       from: oldPosition,
       to: newPosition,
       timestamp: new Date()
     });
-    
+
     return true;
   }
-  
+
   public getMoveHistory(): MoveHistory[] {
     return [...this.moveHistory];
   }
-  
+
   public resetBoard(): void {
-    this.pieces = [];
-    this.moveHistory = [];
     this.initializeBoard();
   }
 }
