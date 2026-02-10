@@ -13,7 +13,7 @@ pipeline {
             steps {
                 sh '''
                     npm install
-                    npm run build
+                    npx vite build
                 '''
             }
         }
@@ -28,7 +28,7 @@ pipeline {
             steps {
                 sh '''
                     export HOME=/tmp
-                    npm run test || true
+                    npx vitest run || true
                 '''
             }
             post {
@@ -57,7 +57,7 @@ pipeline {
                 sh '''
                     export HOME=/tmp
                     npx playwright install --with-deps
-                    npm run test:e2e || true
+                    npx playwright test || true
                 '''
             }
             post {
