@@ -7,7 +7,7 @@ export interface ChessPiece {
   id: string;
   type: PieceType;
   color: PieceColor;
-  position: string; // 'a1', 'b2', etc.
+  position: string;
 }
 
 export interface MoveHistory {
@@ -83,31 +83,45 @@ export class ChessService {
     return this.pieces.find(p => p.position === position) || null;
   }
 
-  // 🔥 MÉTHODE CLÉ DU TP
   public movePiece(pieceId: string, newPosition: string): boolean {
     const piece = this.pieces.find(p => p.id === pieceId);
     if (!piece) return false;
 
-    const move = this.chess.move({
-      from: piece.position,
-      to: newPosition,
-      promotion: 'q' // requis par chess.js
-    });
+    const oldPosition = piece.position;
 
-    // ❌ coup illégal → refusé
+    // CRITIQUE: Utiliser try-catch pour gérer les exceptions de chess.js
+    let move;
+    try {
+      move = this.chess.move({
+        from: oldPosition,
+        to: newPosition,
+        promotion: 'q'
+      });
+    } catch (error) {
+      // Si chess.js lance une exception, le mouvement est invalide
+      return false;
+    }
+
+    // Si move est null, le mouvement est invalide
     if (!move) {
       return false;
     }
 
-    const oldPosition = piece.position;
+    // ORDRE CORRECT pour la capture:
+    // 1. Trouver la pièce à la destination AVANT de bouger
+    const pieceAtDestination = this.pieces.find(
+      p => p.position === newPosition && p.id !== pieceId
+    );
 
-    // Capture
-    if (move.captured) {
-      this.pieces = this.pieces.filter(p => p.position !== newPosition);
+    // 2. Si capture, supprimer la pièce capturée PAR ID
+    if (pieceAtDestination) {
+      this.pieces = this.pieces.filter(p => p.id !== pieceAtDestination.id);
     }
 
+    // 3. Bouger la pièce
     piece.position = newPosition;
 
+    // 4. Enregistrer l'historique
     this.moveHistory.push({
       pieceId,
       from: oldPosition,

@@ -113,7 +113,7 @@ pipeline {
                     export HOME=/tmp
                     chmod -R +x node_modules/.bin/
                     npm install netlify-cli
-                    npx netlify deploy --prod --site=chess-game-manar --dir=dist --auth=$NETLIFY_AUTH_TOKEN
+                    npx netlify deploy --prod --site=693214db-6fa1-4c0b-bff1-b0d458dd3192 --dir=dist --auth=$NETLIFY_AUTH_TOKEN
                 '''
             }
         }
