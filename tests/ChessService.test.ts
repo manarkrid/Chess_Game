@@ -60,23 +60,33 @@ describe('ChessService', () => {
     });
 
     it('should replace piece when moving to occupied square', () => {
-      // Vérifier qu'il y a une pièce en e2 (pion blanc)
-      const initialPieceAtE2 = chessService.getPieceAt('e2');
-      expect(initialPieceAtE2?.type).toBe('pawn');
-
-      // Déplacer la tour a1 vers e2
-      const success = chessService.movePiece('wr1', 'e2');
+      // Scénario de capture valide aux échecs
+      // 1. Pion blanc e2 -> e4
+      chessService.movePiece('wp5', 'e4');
+      
+      // 2. Pion noir d7 -> d5
+      chessService.movePiece('bp4', 'd5');
+      
+      // 3. Vérifier qu'il y a 32 pièces avant la capture
+      expect(chessService.getPieces()).toHaveLength(32);
+      
+      // 4. Capture: pion blanc e4 prend d5
+      const success = chessService.movePiece('wp5', 'd5');
       expect(success).toBe(true);
-
-      // Vérifier que la tour est maintenant en e2
-      const newPieceAtE2 = chessService.getPieceAt('e2');
-      expect(newPieceAtE2?.id).toBe('wr1');
-      expect(newPieceAtE2?.type).toBe('rook');
-
-      // Vérifier que le pion n'est plus dans la liste des pièces
+      
+      // 5. Vérifier que le pion blanc est maintenant en d5
+      const capturer = chessService.getPieceAt('d5');
+      expect(capturer?.id).toBe('wp5');
+      expect(capturer?.type).toBe('pawn');
+      expect(capturer?.color).toBe('white');
+      
+      // 6. Vérifier qu'il ne reste que 31 pièces (une capturée)
+      expect(chessService.getPieces()).toHaveLength(31);
+      
+      // 7. Vérifier que le pion noir n'existe plus
       const pieces = chessService.getPieces();
-      const pawnAtE2 = pieces.find(p => p.id === initialPieceAtE2?.id);
-      expect(pawnAtE2).toBeUndefined();
+      const capturedPawn = pieces.find(p => p.id === 'bp4');
+      expect(capturedPawn).toBeUndefined();
     });
 
     it('should return false when moving non-existent piece', () => {
@@ -85,14 +95,13 @@ describe('ChessService', () => {
     });
 
     it('should not allow moving to the same position', () => {
-      // Note: Cette fonctionnalité pourrait être ajoutée au service
-      // Pour l'instant, on vérifie que le mouvement est enregistré
-      const success = chessService.movePiece('wp1', 'a2'); // Même position
-      expect(success).toBe(true);
+      // Essayer de bouger un pion à sa propre position (mouvement invalide)
+      const success = chessService.movePiece('wp1', 'a2');
+      expect(success).toBe(false);
       
-      // Le mouvement devrait être enregistré dans l'historique
+      // L'historique doit rester vide car le mouvement n'est pas valide
       const history = chessService.getMoveHistory();
-      expect(history).toHaveLength(1);
+      expect(history).toHaveLength(0);
     });
   });
 
@@ -130,7 +139,7 @@ describe('ChessService', () => {
     it('should reset board to initial state', () => {
       // Faire quelques mouvements
       chessService.movePiece('wp1', 'a3');
-      chessService.movePiece('wr1', 'e2');
+      chessService.movePiece('wp5', 'e4');
       chessService.movePiece('bp1', 'a6');
 
       // Réinitialiser
