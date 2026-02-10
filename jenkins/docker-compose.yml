@@ -13,6 +13,9 @@ services:
       - jenkins-data:/var/jenkins_home:rw
     environment:
       - DOCKER_TLS_CERTDIR=
+    networks:
+      - jenkins-network
+    command: --storage-driver overlay2
   
   jenkins:
     build: .
@@ -30,6 +33,14 @@ services:
     environment:
       - JAVA_OPTS=-Dhudson.model.DirectoryBrowserSupport.CSP=
       - DOCKER_HOST=tcp://jenkins-docker:2375
+    networks:
+      - jenkins-network
+    depends_on:
+      - jenkins-docker
 
 volumes:
   jenkins-data:
+
+networks:
+  jenkins-network:
+    driver: bridge
