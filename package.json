@@ -9,6 +9,7 @@
     "test:e2e": "playwright test --reporter=html"
   },
   "dependencies": {
+    "chess.js": "^1.4.0",
     "vue": "^3.4.0"
   },
   "devDependencies": {
