@@ -1,28 +1,35 @@
-version: '3.9'
-
 services:
   jenkins-docker:
     image: docker:dind
     container_name: jenkins-docker
     privileged: true
     restart: always
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    ports:
+      - "2375:2375"
     volumes:
-      - docker-data:/var/lib/docker
-
+      - jenkins-data:/var/jenkins_home:rw
+    environment:
+      - DOCKER_TLS_CERTDIR=
+  
   jenkins:
     build: .
     container_name: jenkins
     user: root
     restart: always
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     ports:
       - "8080:8080"
       - "50000:50000"
     volumes:
-      - jenkins-data:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock  # ← accès Docker DinD
+      - jenkins-data:/var/jenkins_home:rw
     environment:
       - JAVA_OPTS=-Dhudson.model.DirectoryBrowserSupport.CSP=
+      - DOCKER_HOST=tcp://jenkins-docker:2375
 
 volumes:
   jenkins-data:
-  docker-data:

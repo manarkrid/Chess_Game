@@ -1,11 +1,5 @@
 pipeline {
-    agent any  
-
-    environment {
-        NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN')
-        HOME = '/tmp'
-        PLAYWRIGHT_BROWSERS_PATH = '/tmp/playwright-browsers'
-    }
+    agent any
 
     stages {
 
@@ -14,15 +8,14 @@ pipeline {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
                     args '--network=host -u root:root'
-                    reuseNode true
                 }
             }
             steps {
                 sh '''
-                    export HOME=/tmp
-                    npm ci
-                    npx --yes playwright install --with-deps chromium
-                    npm run build
+                    rm -rf node_modules package-lock.json
+                    npm install
+                    chmod -R +x node_modules/.bin/
+                    npx vite build
                 '''
             }
         }
@@ -32,13 +25,13 @@ pipeline {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
                     args '--network=host -u root:root'
-                    reuseNode true
                 }
             }
             steps {
                 sh '''
                     export HOME=/tmp
-                    npm run test || true
+                    chmod -R +x node_modules/.bin/
+                    npx vitest run || true
                 '''
             }
             post {
@@ -61,13 +54,14 @@ pipeline {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
                     args '--network=host -u root:root'
-                    reuseNode true
                 }
             }
             steps {
                 sh '''
                     export HOME=/tmp
-                    npm run test:e2e || true
+                    chmod -R +x node_modules/.bin/
+                    npx playwright install --with-deps
+                    npx playwright test || true
                 '''
             }
             post {
@@ -85,9 +79,10 @@ pipeline {
             }
         }
 
-        stage('Docker Build & Push') {
-            when {
-                branch 'main'
+        stage('docker') {
+            agent any
+            when { 
+                branch 'main' 
             }
             environment {
                 CI_REGISTRY = 'ghcr.io'
@@ -96,11 +91,9 @@ pipeline {
                 CI_REGISTRY_PASSWORD = credentials('CI_REGISTRY_PASSWORD')
             }
             steps {
-                sh '''
-                    docker build -t $CI_REGISTRY_IMAGE .
-                    echo $CI_REGISTRY_PASSWORD | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
-                    docker push $CI_REGISTRY_IMAGE
-                '''
+                sh 'docker build --network=host -t $CI_REGISTRY_IMAGE .'
+                sh 'echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY'
+                sh 'docker push $CI_REGISTRY_IMAGE'
             }
         }
 
@@ -110,12 +103,15 @@ pipeline {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
                     args '--network=host -u root:root'
-                    reuseNode true
                 }
+            }
+            environment {
+                NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN')
             }
             steps {
                 sh '''
                     export HOME=/tmp
+                    chmod -R +x node_modules/.bin/
                     npm install netlify-cli
                     npx netlify deploy --prod --site=chess-game-manar --dir=dist --auth=$NETLIFY_AUTH_TOKEN
                 '''
