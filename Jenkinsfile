@@ -12,6 +12,7 @@ pipeline {
             }
             steps {
                 sh '''
+                    rm -rf node_modules package-lock.json
                     npm install
                     chmod -R +x node_modules/.bin/
                     npx vite build
