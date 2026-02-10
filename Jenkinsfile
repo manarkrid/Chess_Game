@@ -13,6 +13,7 @@ pipeline {
             steps {
                 sh '''
                     npm install
+                    chmod -R +x node_modules/.bin/
                     npx vite build
                 '''
             }
@@ -28,6 +29,7 @@ pipeline {
             steps {
                 sh '''
                     export HOME=/tmp
+                    chmod -R +x node_modules/.bin/
                     npx vitest run || true
                 '''
             }
@@ -56,6 +58,7 @@ pipeline {
             steps {
                 sh '''
                     export HOME=/tmp
+                    chmod -R +x node_modules/.bin/
                     npx playwright install --with-deps
                     npx playwright test || true
                 '''
@@ -107,6 +110,7 @@ pipeline {
             steps {
                 sh '''
                     export HOME=/tmp
+                    chmod -R +x node_modules/.bin/
                     npm install netlify-cli
                     npx netlify deploy --prod --site=chess-game-manar --dir=dist --auth=$NETLIFY_AUTH_TOKEN
                 '''
