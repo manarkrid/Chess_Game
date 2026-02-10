@@ -8,15 +8,14 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     ports:
-      - "2376:2376"
+      - "2375:2375"
     volumes:
-      - jenkins-docker-certs:/certs/client:rw
       - jenkins-data:/var/jenkins_home:rw
     environment:
-      - DOCKER_TLS_CERTDIR=/certs
+      - DOCKER_TLS_CERTDIR=
   
   jenkins:
-    image: jenkins/jenkins:2.528.3-jdk21
+    build: .
     container_name: jenkins
     user: root
     restart: always
@@ -28,14 +27,9 @@ services:
       - "50000:50000"
     volumes:
       - jenkins-data:/var/jenkins_home:rw
-      - jenkins-docker-certs:/certs/client:ro
-      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - JAVA_OPTS=-Dhudson.model.DirectoryBrowserSupport.CSP=
-      - DOCKER_HOST=tcp://jenkins-docker:2376
-      - DOCKER_CERT_PATH=/certs/client
-      - DOCKER_TLS_VERIFY=1
+      - DOCKER_HOST=tcp://jenkins-docker:2375
 
 volumes:
   jenkins-data:
-  jenkins-docker-certs:  # ← AJOUTÉ : volume manquant
